@@ -1,0 +1,109 @@
+/*
+ * Tests for the CBOR facade: known RFC 8949 vectors, round-trips,
+ * canonical (length-first) map ordering, and the tag-24 embedded-CBOR helper.
+ */
+package ohos_app_cangjie_eudi_cjcbor.cbor
+
+import std.collection.ArrayList
+import std.unittest.*
+import std.unittest.testmacro.*
+
+func arr(items: Array<CborValue>): CborValue {
+    let l = ArrayList<CborValue>()
+    for (it in items) {
+        l.add(it)
+    }
+    return ArrayVal(l)
+}
+
+func mapOf(pairs: Array<(CborValue, CborValue)>): CborValue {
+    let l = ArrayList<(CborValue, CborValue)>()
+    for (p in pairs) {
+        l.add(p)
+    }
+    return MapVal(l)
+}
+
+@Test
+public class CborValueTest {
+    @TestCase
+    func testUnsignedVector() {
+        // 1234 == 0x04D2 -> major0 two-byte: 19 04 d2
+        @Assert(hex(cborInt(1234).encode()), "1904d2")
+    }
+
+    @TestCase
+    func testNegativeVector() {
+        // -500 -> n = 499 = 0x01F3 -> major1 two-byte: 39 01 f3
+        @Assert(hex(cborInt(-500).encode()), "3901f3")
+    }
+
+    @TestCase
+    func testTextAndBytesVectors() {
+        @Assert(hex(TextStringVal("text").encode()), "6474657874")   // 64 'text'
+        @Assert(hex(ByteStringVal([0x10]).encode()), "4110")          // 41 10
+        @Assert(hex(BoolVal(true).encode()), "f5")
+        @Assert(hex(BoolVal(false).encode()), "f4")
+        @Assert(hex(NullVal.encode()), "f6")
+    }
+
+    @TestCase
+    func testRoundTripComposite() {
+        let original = arr([
+            cborInt(1),
+            TextStringVal("hello"),
+            ByteStringVal([0xAA, 0xBB]),
+            BoolVal(true),
+            NullVal,
+            mapOf([(TextStringVal("k"), cborInt(-7))])
+        ])
+        let decoded = decodeCbor(original.encode())
+        @Assert(decoded == original)
+    }
+
+    @TestCase
+    func testCanonicalMapOrdering() {
+        // Keys encode to: 1 -> "01" (len1), "b" -> "6162" (len2), "aa" -> "626161" (len3).
+        // Canonical (length-first) order is: 1, "b", "aa" — regardless of insertion order.
+        let m = mapOf([
+            (TextStringVal("aa"), cborInt(3)),
+            (TextStringVal("b"), cborInt(2)),
+            (cborInt(1), cborInt(1))
+        ])
+        // a3 (map,3)  01 01  61 62 02  62 61 61 03
+        @Assert(hex(m.encode()), "a30101616202626161" + "03")
+    }
+
+    @TestCase
+    func testCanonicalOrderingMatchesSwiftCBOR() {
+        // Regression for the length-first vs bytewise divergence.
+        // Keys encode to: 10 -> "0a" (len1), 256 -> "190100" (len3), -1 -> "20" (len1).
+        //   bytewise (SwiftCBOR / RFC 8949 §4.2.1):  0a < 19 < 20  =>  [10, 256, -1]
+        //   length-first (old cbor4cj, WRONG here):  len1 then len3 => [10, -1, 256]
+        // We must match SwiftCBOR. Values: 10->0, 256->1, -1->2.
+        let m = mapOf([
+            (cborInt(-1), cborInt(2)),     // inserted out of canonical order on purpose
+            (cborInt(256), cborInt(1)),
+            (cborInt(10), cborInt(0))
+        ])
+        // a3 | 0a 00 | 19 01 00 01 | 20 02
+        @Assert(hex(m.encode()), "a30a00190100012002")
+    }
+
+    @TestCase
+    func testEmbeddedTag24() {
+        // encodeEmbedded(1) -> #6.24(bstr containing 0x01) -> d8 18 41 01
+        let emb = encodeEmbedded(cborInt(1))
+        @Assert(hex(emb.encode()), "d8184101")
+        // round-trip through bytes and unwrap
+        let back = decodeEmbedded(decodeCbor(emb.encode()))
+        @Assert(back == cborInt(1))
+    }
+
+    @TestCase
+    func testTaggedRoundTrip() {
+        let v = TaggedVal(CborTag.FULL_DATE, TextStringVal("2024-01-31"))
+        let decoded = decodeCbor(v.encode())
+        @Assert(decoded == v)
+    }
+}

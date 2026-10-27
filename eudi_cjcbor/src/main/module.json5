@@ -1,0 +1,9 @@
+{
+  "module": {
+    "name": "eudi_cjcbor",
+    "type": "har",
+    "deviceTypes": [
+      "default"
+    ]
+  }
+}

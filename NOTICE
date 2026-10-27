@@ -1,0 +1,26 @@
+eudi_lib_cbor
+Copyright (c) 2026 the eudi_lib_cbor contributors
+
+This product is a Cangjie (仓颉) CBOR module for the EU Digital Identity
+Wallet on HarmonyOS. It provides a CborValue facade shaped after the CBOR
+model used by the EUDI Wallet Swift libraries, tag-24 helpers, and RFC 8949
+bytewise canonical map ordering.
+
+This product depends on the following third-party software:
+
+  - cbor4cj (Apache License 2.0) — Cangjie CBOR engine from Cangjie-TPC
+    (https://gitcode.com/Cangjie-TPC/cbor4cj), consumed as a cjpm git
+    dependency from a fork carrying build-only fixes; the exact commit is
+    pinned in eudi_cjcbor/cjpm.lock. Not vendored.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this project except in compliance with the License. You may obtain a
+copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations
+under the License.
